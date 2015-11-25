@@ -1,0 +1,503 @@
+function[crit] = LEB_model(Par, itec, scale, in1)
+
+maxbpts = 200; %before it was 100    
+load(in1);    %load village stratification
+
+maxt = size(F,2);  
+clear wealth
+
+% ECONOMY WITH FINANCIAL INTERMEDIATION
+
+
+% Exogenous Parameters in both sectors
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                                   Environment 
+
+m1      = max(-1,Par(1)); %                   Cost distribution parameter 
+omega1  = Par(2); %                   Share of wealth bequeathed  
+beta1   = Par(3); 
+alpha1  = Par(4); 
+rho1    = Par(5); 
+sigma1  = Par(6); 
+xi1     = Par(8); 
+%
+m2 =  m1;  
+omega2 = omega1; 
+alpha2 = alpha1;  
+beta2 = beta1;
+xi2 = xi1;  
+rho2 = rho1;
+sigma2 = sigma1; 
+%
+gamma  = Par(7)*(1+Par(9)).^[0:maxt-1];
+nu = max(0,Par(10));
+
+
+%calibrate welath 
+[bsp0,bpr0,ysp0,ypr0] = LEB_calibrate(scale,maxbpts, in1);
+
+
+size(bsp0); % (1,100) 
+size(bpr0); % (1,100)
+
+income0  = ysp0*ypr0';
+wealth0  = bsp0*bpr0'; % 0.0584
+
+%
+bsp1     = bsp0; 
+bpr1     = bpr0; 
+wealth1  = wealth0*(1-F2(1)); % 0.0549
+
+
+supp(1,:)=bsp1;
+wdist(1,:)=bpr1;
+
+% 
+bsp2     = bsp1;
+bpr2     = bpr1;
+
+
+wealth2  = wealth0*F2(1); % 0.0035
+% 
+Parlm1=[m1 alpha1 beta1 xi1 rho1 sigma1];
+Parlm2=[m2 alpha2 beta2 xi2 rho2 sigma2];
+Pardis1=[maxbpts m1 omega1 alpha1 beta1 xi1 rho1 sigma1]; 
+Pardis2=[maxbpts m2 omega2 nu]; 
+
+
+for genr = 1:maxt,
+    %maxt=21;
+   % 
+   [E1,E2,Ld1,Ld2,wage,rate,XXB1,XXX1,xhat2,UVar1,UVar2,XPar1]=lmeq2sc(bsp1,bpr1,wealth2/F2(genr),[Parlm1 gamma(genr) nu],[Parlm2 gamma(genr) nu],F2(genr));
+    %wages=[wages,wage]; use this to generate wages
+    
+   
+   E  = E1 + E2;
+   Ld = Ld1 + Ld2; 
+
+   
+cc1 = -XPar1(1)/XPar1(2);
+cc2 = (2*wage-XPar1(3))/XPar1(2);
+cc3 = -2/XPar1(2);
+b_hat = (XPar1(3)-2*wage)/2;
+b_star = (cc1^2+cc2)/cc3-cc3/4;
+x_star = cc3/4+(cc1^2+cc2)/cc3-cc1;
+
+%   disp([sprintf('%d & %1.3f & %1.4f & %1.4f &  %1.3f',year(genr), F2(genr), E+Ld, wage, rate) ' \\']);  
+ 
+   if (E2 < F2(genr))
+      W2 = min(Ld2, F2(genr) - E2);
+      W1 = Ld1 + max(0, Ld2-W2);
+   else 
+      W2 = 0;
+      W1 = Ld1+Ld2;
+      
+   W2(genr,:)=W2;    
+      
+  end
+   
+   % disp(wages) use this to generate wages
+   %                                Find Next Distributions of Inheritances
+   %                                and Incomes
+   bsp01    = bsp1;
+   bpr01    = bpr1;
+
+   %
+   %wage
+   
+   [bsp1,bpr1,ysp1,ypr1,Res1,yprw,ypre,bprw,bpre,gridco,occo,wkco]=resdistnc(bsp01,bpr01,wage,XXB1,XXX1,UVar1,XPar1,[Pardis1 gamma(genr) nu]); 
+   %wage
+   bsp02    = bsp2;
+   bpr02    = bpr2;
+ 
+   GR(:,:,genr)=gridco;
+   OC(:,:,genr)=occo;
+   supp(genr,:)=bsp1; %the support for each period
+
+   WK(:,:,genr)=wkco;
+   
+
+   [bsp2,bpr2,bprw,bpre,ysp2,ypr2,ynsp,yprw,ypre,ynprw,ynpre,gridcoc,occoc,wkcoc]=resdistc(bsp02,bpr02,rate,wage,xhat2,UVar2,Pardis2); 
+    
+   GRc(:,:,genr) = gridcoc;
+   OCc(:,:,genr) = occoc;
+   WKc(:,:,genr) = wkcoc;
+   suppc(genr,:) = bsp2;   %the support for each period
+
+
+   %F2 = linspace(.06,.26,maxt) REMEMBER !
+   %genr = 1:maxt %21 PERIODS REMEMBER
+   
+   [bsp,bpr] = mdist(bsp1,bsp2,bpr1,bpr2,F2(genr));
+   [ysp,ypr] = mdist(ysp1,ysp2,ypr1,ypr2,F2(genr));
+   
+   wealth    = sum(bpr.*bsp);%all economy
+%   income    = sum(ypr.*ysp);%%all economy
+   wealth1   = sum(bpr1.*bsp1)*(1-F2(genr));%noncredit
+%   income1   = sum(ypr1.*ysp1)*(1-F2(genr));%noncredit
+   wealth2   = sum(bpr2.*bsp2)*F2(genr);%credit
+%   income2   = sum(ypr2.*ysp2)*F2(genr);%credit
+   %
+   
+
+ 
+   wealth    = sum(bpr.*bsp);%all economy
+      
+   income    = sum(ypr.*ysp);%%all economy
+   
+   subin1    = gamma(genr)*((1-F2(genr)) - W1 - E1);  %subsistence income NO CREDIT
+   subin2    = gamma(genr)*(F2(genr) - W2 - E2); %subsistence income CREDIT
+   
+   urban1= W1/(1-F2(genr)); %urban employment NO CREDIT
+   urban2= W2/F2(genr); %urban employment  CREDIT
+
+   wealth_all(genr) = wealth;
+   income_all(genr) = income;
+   lab_dem(genr) = Ld;
+   
+   
+disp('***')   
+disp([sprintf('%s %d %s %1.3f %s %1.4f %s %1.4f %s %1.4f %s  %1.3f','year', year(genr), 'part', F2(genr), 'ent', E, 'total labor demand',lab_dem(genr), 'wage',wage, 'rate', rate) ' \\']);       
+disp([sprintf('%s  %1.3f  %s %1.4f %s %1.4f %s %1.4f', 'b_star', XXB1, 'b_hat', b_hat, 'x_star', XXX1, 'x_hat', xhat2)]);    
+disp([sprintf('%s  %1.3f', 'wealth', wealth)]); 
+disp([sprintf('%s  %1.3f', 'income', income)]);
+disp([sprintf('%s  %1.3f %s  %1.3f', 'subincome1',subin1,' subincome2',subin2)]);
+disp([sprintf('%s  %1.3f %s  %1.3f', 'E1',E1,' E2',E2)]);
+
+   %  ECONOMY 1 (NO CREDIT)
+%    
+%    coliv1    = nu*(W1 + E1);%cost of living=nu*workers + nu*entrepreneurs
+%    ntinc1    = income1 - coliv1;% net total income
+%    wgs1      = wage*Ld1;% total wages paid
+%    subin1    = gamma(genr)*((1-F2(genr)) - W1 - E1);% total subsistence income
+%    pft1      = income1 - wage*W1 - subin1;% total profits
+%    size(ntinc1)
+%    size(wgs1)
+%    size(subin1)
+%    size(pft1)
+
+%    %
+   % Res are statistics created by resdistnc. Res=[Eu,Ku,Kc,suc,kc]
+   
+%    Eu1      = Res1(1)*(1-F2(genr));
+%    Ku1      = Res1(2)*(1-F2(genr));
+%    Kc1      = Res1(3)*(1-F2(genr));
+%    suc1     = Res1(4)*(1-F2(genr));
+%    Ec1      = E1 - Eu1; % constrained entrepreneurs in economy 1=economy with no credit
+%    K1       = Ku1 + Kc1;% total capital usage  
+%    Yind1    = pft1 + wgs1 + K1 + suc1;% industrial output= profits+wages + capital usage + setup costs
+%    storg1   = wealth01 - K1 - suc1;% wealth-capital usage - setup costs
+%    kc1      = Res1(5);% capital used in setup costs
+%    lc1      = max(0, (sigma1 * kc1 + xi1 - wage)/rho1);
+%    %wage
+%    ku1      = UVar1(2);                      % Unconstrained Capital Stock
+%    lu1      = UVar1(3);                      % Unconstrained Labor Demand 
+%    %
+%    
+%    % ECONOMY 2 (CREDIT)
+%    
+%    coliv2    = nu*(W2 + E2);
+%    ntinc2    = income2 - coliv2;
+%    wgs2      = wage*Ld2; % total wages paid
+%   
+%    
+%    subin2    = gamma(genr)*(F2(genr) - W2 - E2);
+%    pft2     = income2 - wage*W2 - subin2;
+   
+%    size(ntinc2)
+%    size(wgs2)
+%    size(subin2)
+%    size(pft2)
+
+%    
+   %
+%    fu2      = UVar2(1); % prodits for unconstrained entrepreneurs                    
+%    ku2      = UVar2(2);                     % Unconstrained Capital Stock
+%    lu2      = UVar2(3);                     % Unconstrained Labor Demand 
+%    K2       = ku2*E2;
+%    suc2     = xhat2*xhat2*(2/3*m2*xhat2 + (1 - m2)/2)*F2(genr);
+%    %
+%    Yind2    = fu2*E2; % industrial output= pft2 + wgs2 + K2 + suc2;
+%    storg2   = wealth02 - K2 - suc2;
+%    %
+%    loans2   = 0;
+%    %
+%    for i = 1:length(bpr02),% 100
+%       
+%        b       = bsp02(i);
+%       if ku2 + xhat2 > b;
+%          x1      = max(0,b-ku2);
+%          x2      = xhat2;
+%          H2      = x2*(m2*x2 + (1-m2));
+%          H1      = x1*(m2*x1 + (1-m2));
+%          %
+%          loans2   = loans2 + (ku2-b)*(H2-H1)*bpr02(i)*F2(genr);
+%          loans2   = loans2 +  ...
+%                      ( x2*x2*(2/3*m2*x2 + (1 - m2)/2) ...
+%                      - x1*x1*(2/3*m2*x1 + (1 - m2)/2) )*bpr02(i)*F2(genr);
+%       end,
+%    end,
+   
+   
+   % INCOME
+   
+%    [ylrnz,ygini] = lzgini(ysp,ypr,length(ysp));  % Lorenz Curve, Gini Coef. 
+%    yshrt         = shratio(ysp,ypr,length(ysp)); % and Share ratio
+%    %                                               for Income Distribution
+ %(ylrnz) (2,101)
+ %(ygini)  (1,1)
+ 
+ 
+%  % WEALTH
+%  
+%    [lrnz,gini]   = lzgini(bsp,bpr,length(bsp)); 
+%    shrt          = shratio(bsp,bpr,length(bsp));
+%    
+%    
+%  % ECONOMY 1 (NO CREDIT)
+%  
+%    [ylrnz1,ygini1] = lzgini(ysp1,ypr1,length(ysp1)); 
+%    yshrt1          = shratio(ysp1,ypr1,length(ysp1));
+%    %
+%    [lrnz1,gini1]   = lzgini(bsp1,bpr1,length(bsp1)); 
+%    shrt1           = shratio(bsp1,bpr1,length(bsp1));
+%  
+%    
+%    % ECONOMY 2 (CREDIT)
+%    
+%    [ylrnz2,ygini2] = lzgini(ysp2,ypr2,length(ysp2)); 
+%    yshrt2          = shratio(ysp2,ypr2,length(ysp2));
+%    %
+%    [lrnz2,gini2]   = lzgini(bsp2,bpr2,length(bsp2));  
+%    shrt2           = shratio(bsp2,bpr2,length(bsp2)); 
+  
+ 
+%    % WEALTH
+%    
+%    wdistser  = [wdistser; bpr]; % (2,100)      %   wealth distribution 
+%    wdistser1 = [wdistser1; bpr1]; % (2,100)     
+%    wdistser2 = [wdistser2; bpr2];      
+%    wdsupser  = [wdsupser; bsp];%   support of wealth distribution  (2,100)
+%    wdsupser1 = [wdsupser1; bsp1]; 
+%    wdsupser2 = [wdsupser2; bsp2];   
+%    
+%   
+%    % INCOME
+%    
+%    ydistser  = [ydistser; ypr];       %   income distribution 
+%    ydistser1 = [ydistser1; ypr1];      
+%    ydistser2 = [ydistser2; ypr2];      
+%    ydsupser  = [ydsupser; ysp];       %   support of income distribution  
+%    ydsupser1 = [ydsupser1; ysp1]; 
+%    ydsupser2 = [ydsupser2; ysp2];   
+%    
+%    % 
+%    
+%    wagesser = [wagesser; wage]; % (2,1)        %  wages 
+%    ratesser = [ratesser; rate];          %  rates 
+%    %
+%    wealtser = [wealtser; wealth];      %  aggregate wealth
+%    incomser = [incomser; income];      %  aggregate income
+%    wealtser = [wealtser; wealth];        %  aggregate wealth;
+%    outptser = [outptser; Yind1+Yind2];  %  Industrial output
+%    substser = [substser; subin1+subin2]; % Subsistance income
+%    twageser = [twageser; wgs1+wgs2];    %  total wages paid
+%    ginicser = [ginicser; gini];        %  Wealth gini coefficient
+%    yginiser = [yginiser; ygini];       %  Income gini coefficient
+%    shratser = [shratser; shrt];        %  Wealth share ratio
+%    yshrtser = [yshrtser; yshrt];       %  Income share ratio
+%    srateser = [srateser; wealth/income]; %  Savings rate
+%    capyrser = [capyrser; (K1+K2+suc1+suc2)/(Yind1+Yind2)]; %  K/Y ratio
+%    lashrser = [lashrser; (wgs1+wgs2+subin1+subin2)/income];  %  Labor share
+%    entrpser = [entrpser; E];
+%    
+%    
+%    % ECONOMY 1 (NO CREDIT)
+%    
+%    wealtser1 = [wealtser1; wealth1/(1-F2(genr))]; %  aggregate wealth;
+%    incomser1 = [incomser1; income1/(1-F2(genr))]; %  aggregate income;     
+%    emplyser1 = [emplyser1; W1/(1-F2(genr))]; %  urban employment [0 0.7718]
+%    entrpser1 = [entrpser1; E1/(1-F2(genr))];    %  total entrepreneurs  
+%    entrcser1 = [entrcser1; Ec1/(1-F2(genr))];   %  total constrained Entr.
+%    entruser1 = [entruser1; Eu1/(1-F2(genr))];  %  total unconstrained Entr. 
+%    outptser1 = [outptser1; Yind1/(1-F2(genr))];  %  Industrial output
+%    twageser1 = [twageser1; wage*W1/(1-F2(genr))]; %  total wages paid in S1
+%    tprftser1 = [tprftser1; pft1/(1-F2(genr))];    %  total profits
+%    tcapdser1 = [tcapdser1; K1/(1-F2(genr))];      %  total capital demand
+%    tcapcser1 = [tcapcser1; Kc1/(1-F2(genr))];     %  total constrained Kd
+%    tcapuser1 = [tcapuser1; Ku1/(1-F2(genr))];     %  total unconstrained Kd
+%    colivser1 = [colivser1; coliv1/(1-F2(genr))];  %  cost of living 
+%    sbincser1 = [sbincser1; subin1/(1-F2(genr))];  %  subsistance income
+%    ntincser1 = [ntincser1; ntinc1/(1-F2(genr))];  %  net income
+%    storgser1 = [storgser1; storg1/(1-F2(genr))];  %  storage
+%    sucosser1 = [sucosser1; suc1/(1-F2(genr))];    %  setup costs
+%    caploser1 = [caploser1; kc1];          %  smallest firm 
+%    caphiser1 = [caphiser1; ku1];          %  biggest firm  (unconstrained)
+%    mpkloser1 = [mpkloser1; alpha1 - beta1*kc1 + sigma1*lc1]; %
+%    mpkhiser1 = [mpkhiser1; alpha1 - beta1*ku1 + sigma1*lu1]; %
+%    ginicser1 = [ginicser1; gini1];        %  Wealth gini coefficient
+%    yginiser1 = [yginiser1; ygini1];       %  Income gini coefficient
+%    shratser1 = [shratser1; shrt1];        %  Wealth share ratio
+%    yshrtser1 = [yshrtser1; yshrt1];       %  Income share ratio
+%    %
+%    
+%    
+%    % ECONOMY 2 (CREDIT)
+%    
+%    wealtser2 = [wealtser2; wealth2/F2(genr)];      %  aggregate wealth;
+%    incomser2 = [incomser2;  income2/F2(genr)]; %  aggregate income;     
+%    emplyser2 = [emplyser2; W2/F2(genr)];          %  urban employment 
+%    entrpser2 = [entrpser2; E2/F2(genr)];           %  total entrepreneurs  
+%    outptser2 = [outptser2; Yind2/F2(genr)];        %  Industrial output
+%    twageser2 = [twageser2; wage*W2/F2(genr)];         %  total wages paid
+%    tprftser2 = [tprftser2; pft2/F2(genr)];         %  total profits
+%    tcapdser2 = [tcapdser2; K2/F2(genr)];           %  total capital demand
+%    colivser2 = [colivser2; coliv2/F2(genr)];       %  cost of living 
+%    sbincser2 = [sbincser2; subin2/F2(genr)];       %  subsistance income
+%    ntincser2 = [ntincser2; ntinc2/F2(genr)];       %  net income
+%    storgser2 = [storgser2; storg2/F2(genr)];       %  storage
+%    loansser2 = [loansser2; loans2/F2(genr)];       %   loans
+%    sucosser2 = [sucosser2; suc2/F2(genr)];         %  setup costs
+%    caphiser2 = [caphiser2; ku2];          %  biggest firm  (unconstrained)
+%    mpkhiser2 = [mpkhiser2; alpha2 - beta2*ku2 + sigma2*lu2]; %
+%    ginicser2 = [ginicser2; gini2];        %  Wealth gini coefficient
+%    yginiser2 = [yginiser2; ygini2];       %  Income gini coefficient
+%    shratser2 = [shratser2; shrt2];        %  Wealth share ratio
+%    yshrtser2 = [yshrtser2; yshrt2];       %  Income share ratio
+ 
+%    sb(genr,:)=bsp; % by doing this we are accumulating in a matrix the distributions for each year.
+%                   % note that the loop is always overwriting the previous bpr and so there's no way 
+%                   % we can recover a (21,100) vector, unless we write this line 
+%    db(genr,:)=bpr;
+%    sb1(genr,:)=bsp1;
+%    db1(genr,:)=bpr1;
+%    sb2(genr,:)=bsp2;
+%    db2(genr,:)=bpr2;
+%    sy(genr,:)=ysp;
+%    dy(genr,:)=ypr;
+%    sy1(genr,:)=ysp1;
+%    dy1(genr,:)=ypr1;
+%    sy2(genr,:)=ysp2;
+%    dy2(genr,:)=ypr2;
+   
+   W2(genr,:)=W2;
+   
+end 
+
+save mkt_nocredit.mat bsp1 bpr1 ysp1 ypr1 Res1 yprw ypre bprw bpre gridco occo wkco
+save mkt_credit.mat bsp2 bpr2 bprw bpre ysp2 ypr2 ynsp yprw ypre ynprw ynpre gridcoc occoc wkcoc
+
+
+per=maxt;
+for tt=1:per
+    mm=sum(GR(:,:,tt));
+    mmc=sum(GRc(:,:,tt));
+    for i=1:maxbpts
+        
+        GR(:,i,tt)=GR(:,i,tt)/mm(i);
+        GRc(:,i,tt)=GRc(:,i,tt)/mmc(i);
+    end
+end
+
+load(in1) %load sample of agents
+
+iii=[1:length(vilid)];  %the villages to study
+
+for ii=iii
+%	if (ii/400)==round(ii/400)
+%    	disp(ii); toc;
+%	end
+    
+	[i,his] = binhist(ii, wealth, F, maxbpts); %find initial bin and history
+
+%disp(['This village, (',num2str(ii),') is in wealth bin: ',num2str(i),' out of 200'])
+%disp('_________________________________________________________')
+%disp('')
+%disp('The village has the following history of participation:')
+%disp('   1986  1988  1990  1992  1994')
+%disp('----------------------------------------------')
+%disp(his)
+
+
+	w0 = bsp0(i);  %the wealth
+	n = length(bsp0);
+
+	T=size(F,2);   %number of periods ahead
+	his=his(1:T);  %shorten history if necessary
+
+	if his(1)==0
+		gr0=GR(:,i,1)';  %first period's probabilities
+	 	wk0=WK(:,i,1);
+		oc0=OC(:,i,1); %first per. occupations distr.
+	else
+		gr0 = GRc(:,i,1)';  %first period's probabilities
+		oc0 = OCc(:,i,1); %first per. occupations distr.
+		wk0=WKc(:,i,1);
+    end
+
+	pr0(ii,1) = sum(wk0);
+	gr1(1,:) = gr0;
+
+	for t=2:T
+%if credit is frozen then financial access conditions from the first year are used
+%instead of actual ones
+        if itec == 0 
+            his(t) = his(1); 
+        end;   
+    	if his(t)==0
+    		gr=GR(:,:,t);  %next period's probabilities
+    		oc=OC(:,:,t); %next per. occupations distr.
+    		wk=WK(:,:,t);
+    	else
+    		gr=GRc(:,:,t);  %next period's probabilities
+    		oc=OCc(:,:,t); %next per. occupations distr.
+    		wk=WKc(:,:,t);
+    	end
+    	 
+   	pr=sum(wk);
+    
+	gr2=repmat(gr0,n,1);
+	grad=gr2.*gr;
+
+
+	gr0=sum(grad');
+	gr1(t,:)=gr0;
+	pr0(ii,t)=gr0*pr';
+	end
+end
+en0 = 1-pr0;
+en1 = en0(:,T);   %last period
+
+%the following should be uncommented for spatial estimations
+%load newbins.mat
+%clear dgr
+%dgr=data2(:,2);
+dgr=[];
+%NEWLY ADDED
+indx1 = [1:length(vilid)];
+%spatial estimations
+%indx2=indx1(dgr==1);        %bin number
+indx2 = indx1; %all bins
+bus_full = bus2;
+en1_full = en1;
+en0_full = en0;
+
+bus2 = bus2(indx2,:);
+en1 = en1(indx2,:);
+en0 = en0(indx2,:);         %only the matched ones
+
+in = 1-isnan(bus2(:,T));
+
+%Match only period T
+dbus = bus2(in==1,T);
+mbus = en1(in==1);
+
+tt=mbus-dbus;
+
+en0 = en0_full;
+en1 = en1_full;
+save '-mat' ent.mat en0 vilid dbus mbus dgr en1
+
+crit=tt'*eye(length(tt))*tt;            %GMM criterion
+
+clear GR OC GRc OCc WK WKc

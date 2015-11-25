@@ -1,0 +1,99 @@
+%% Main function for LEB Model with financial deepening and spatial costs
+% based on Xavier Gine and Robert Townsend (2004). Evaluation of Financial Liberalization: a General Equilibrium Model with Constrained Occupation Choice. Journal of Development Economics 74, 269-307.
+%% Description of inputs needed
+
+%{ 
+Needs initial wealth distribution (wealth), financial access dummy (F), 
+enterpreneurship level (bus2), 
+starting parameter set (Par0) and normalization parameters ()
+%}
+ 
+
+function LEB_start(in1, in2, out1, out2)
+%set default values for input-output files
+
+if nargin < 4 
+    out2 = 'out2.mat'; 
+end;
+if nargin < 3 
+    out1 = 'out1.mat'; 
+end;
+if nargin < 2 
+    in2 = 'param.csv'; 
+end;
+if nargin < 1 
+    in1 = 'sample.mat'; 
+end;
+
+disp(in1); disp(in2);disp(out1),disp(out2);
+%%
+
+%read starting set of parameters
+Par0 =csvread(in2);
+
+%credit/frozen credit flag
+itec = 1;
+
+   
+%% Sets of parameters, previously used for Thailand-related research
+
+%m   omega  beta  alpha   rho      sigma   gamma    xi  gamgr nu
+%sets of parameters, previously used for Thailand-related research
+%Par0 = [-0.5933 0.321 26.9478 -4.5375 0.0016 0.2046 0.02744 0.1127 0 0.026];%xavi paper  
+
+%Par0=[-1 0.24  .094 1.0011 0.0033 0 0.012 0.0566 .002 0];%HYEOK
+%Par0=[0.4256 .27273 .090997 .91855 .0033 0 .012 .0566 .002 .020758]; %Felkner-Townsend
+
+%% Limit the search in parameter space
+
+%%Search only over m
+Para0=Par0(1);
+%Para0=Par0;             %search over all
+
+%farminc = 19274;% xavi paper SES %farminc = 29085.75;% hyeok SES
+
+farminc=28602; %alex 
+     
+% HYEOK'S CALIBRATED PARAMETERS
+% %Par(10)=wthai*scale-Par(7)%nu; % Par(10)=0.01;%nu; % Par(2) = 0.23;%omega % Par(9) = 0;%gamgr
+
+% XAVI'S CALIBRATED PARAMETERS
+%    Par(10) = 0.026;%nu%    Par(2) = 0.321;%omega%    Par(9) = 0;% gamgr
+
+scale = Par0(7)/farminc;
+options=optimset('Disp','Iter');
+
+%initializing criterion value to arbitrary high number
+crb=1000;
+en0=[];
+
+%saving initial criterion value
+save '-mat' criterion.mat crb Para0
+
+%disp(Para0)
+%Par0(1) = 0.7073;
+
+%estimation mode
+%X = fminsearch('crit2b', Par0(1), options, Par0(2:end), itec, scale, in1);
+
+%Using KNITRO solver
+%X = ktrlink(@(Para0)
+%crit2b(Para0,itec,scale),Para0,[],[],[],[],[],[],[]);
+
+%evaluation mode
+X=feval('crit2b',Par0(1), Par0(2:end), itec, scale, in1);
+
+%% Collecting Results
+% criterion.mat holds the best criterion value (crb) with corresponding
+% parameter set (Para0)
+% ent.mat  holds agent unique identifier (vilid), time series for enterpreneurship level from data
+% (dbus) and the model (mbus), dgr is a numeric dummy for agent "bucket"
+% (spatial bin or other characteristic bin)
+
+load ent.mat;
+load criterion.mat;
+save '-mat' results.mat vilid mbus dbus crb Para0 dgr en0;
+
+%% Printing Results
+LEB_output(in1, out1, out2);
+

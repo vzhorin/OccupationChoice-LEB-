@@ -1,0 +1,202 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN">
+<html xmlns:mwsh="http://www.mathworks.com/namespace/mcode/v1/syntaxhighlight.dtd">
+   <head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   
+      <!--
+This HTML is auto-generated from an M-file.
+To make changes, update the M-file and republish this document.
+      -->
+      <title>inidista2</title>
+      <meta name="generator" content="MATLAB 7.6">
+      <meta name="date" content="2008-09-22">
+      <meta name="m-file" content="inidista2"><style>
+
+body {
+  background-color: white;
+  margin:10px;
+}
+
+h1 {
+  color: #990000; 
+  font-size: x-large;
+}
+
+h2 {
+  color: #990000;
+  font-size: medium;
+}
+
+/* Make the text shrink to fit narrow windows, but not stretch too far in 
+wide windows. */ 
+p,h1,h2,div.content div {
+  max-width: 600px;
+  /* Hack for IE6 */
+  width: auto !important; width: 600px;
+}
+
+pre.codeinput {
+  background: #EEEEEE;
+  padding: 10px;
+}
+@media print {
+  pre.codeinput {word-wrap:break-word; width:100%;}
+} 
+
+span.keyword {color: #0000FF}
+span.comment {color: #228B22}
+span.string {color: #A020F0}
+span.untermstring {color: #B20000}
+span.syscmd {color: #B28C00}
+
+pre.codeoutput {
+  color: #666666;
+  padding: 10px;
+}
+
+pre.error {
+  color: red;
+}
+
+p.footer {
+  text-align: right;
+  font-size: xx-small;
+  font-weight: lighter;
+  font-style: italic;
+  color: gray;
+}
+
+  </style></head>
+   <body>
+      <div class="content"><pre class="codeinput"><span class="keyword">function</span> [wsp,wpr,ysp,ypr] = inidista2(scale,pts)
+<span class="keyword">global</span> in1;
+
+<span class="comment">%Village data</span>
+<span class="keyword">if</span> (nargin == 1)
+     pts = 25;
+<span class="keyword">end</span>;
+<span class="comment">%vz leb76a is used to calibrate wealth distribution based on 1976 SES data</span>
+load <span class="string">leb76a</span>;
+wealth1=wealth;
+wm=median(wealth1);
+clear <span class="string">wealth</span>
+<span class="comment">%load vill4pd.mat</span>
+load(in1);
+
+wealth=sort(wealth);
+<span class="comment">%</span>
+resc=wm/median(wealth);
+wealth=resc*wealth;   <span class="comment">%rescale in SES units</span>
+
+<span class="comment">%cd D:/dcuberes/xavi</span>
+
+bpts = length(income);
+ex
+ymodel  = income*scale;
+wmodel  = wealth*scale;         <span class="comment">%model units village wealths</span>
+
+[ymodel,iinc] = sort(ymodel);
+<span class="comment">%wmodel = wmodel(iinc);</span>
+wtp = wtp(iinc);   <span class="comment">%weights</span>
+
+ylo = ymodel(1);
+yhi = ymodel(bpts);
+ysp = linspace(ylo,yhi,pts);
+yhist = hist(ymodel,ysp);  <span class="comment">%create histogram</span>
+ycsum = cumsum(yhist);     <span class="comment">%compute the cumulative sum of elements</span>
+
+ypr(1) = sum(wtp(1:ycsum(1)));  <span class="comment">%sum of weights for initial bin</span>
+<span class="keyword">for</span> i=2:pts
+    ypr(i) = sum(wtp(ycsum(i-1)+1:ycsum(i))); <span class="comment">%sum of weights for bin i</span>
+<span class="keyword">end</span>;
+ty  = sum(ypr);
+ypr = ypr/ty;      <span class="comment">%income density at each bin</span>
+
+<span class="comment">%[wmodel,iwlth] = sort(wmodel);</span>
+<span class="comment">%wtp = wtp(iwlth);</span>
+
+wlo = wmodel(1);
+whi = wmodel(length(wmodel));
+wsp = linspace(wlo,whi,pts);
+whist = hist(wmodel,wsp);
+
+wpr=whist/length(wmodel);
+</pre><pre class="codeoutput">Error using ==&gt; load
+Argument must contain a string.
+
+Error in ==&gt; inidista2 at 14
+load(in1);
+
+</pre><p class="footer"><br>
+            Published with MATLAB&reg; 7.6<br></p>
+      </div>
+      <!--
+##### SOURCE BEGIN #####
+function [wsp,wpr,ysp,ypr] = inidista2(scale,pts)
+global in1;
+
+%Village data
+if (nargin == 1)
+     pts = 25;
+end;
+%vz leb76a is used to calibrate wealth distribution based on 1976 SES data
+load leb76a;
+wealth1=wealth;
+wm=median(wealth1);
+clear wealth
+%load vill4pd.mat
+load(in1);
+
+wealth=sort(wealth);
+% 
+resc=wm/median(wealth);
+wealth=resc*wealth;   %rescale in SES units
+
+%cd D:/dcuberes/xavi
+
+bpts = length(income);
+ex
+ymodel  = income*scale;
+wmodel  = wealth*scale;         %model units village wealths
+
+[ymodel,iinc] = sort(ymodel);
+%wmodel = wmodel(iinc);
+wtp = wtp(iinc);   %weights   
+
+ylo = ymodel(1);
+yhi = ymodel(bpts);
+ysp = linspace(ylo,yhi,pts);
+yhist = hist(ymodel,ysp);  %create histogram
+ycsum = cumsum(yhist);     %compute the cumulative sum of elements
+
+ypr(1) = sum(wtp(1:ycsum(1)));  %sum of weights for initial bin
+for i=2:pts
+    ypr(i) = sum(wtp(ycsum(i-1)+1:ycsum(i))); %sum of weights for bin i
+end;
+ty  = sum(ypr);
+ypr = ypr/ty;      %income density at each bin
+
+%[wmodel,iwlth] = sort(wmodel);
+%wtp = wtp(iwlth);
+
+wlo = wmodel(1);
+whi = wmodel(length(wmodel));
+wsp = linspace(wlo,whi,pts);
+whist = hist(wmodel,wsp);
+
+wpr=whist/length(wmodel);
+
+
+
+
+
+
+
+
+
+##### SOURCE END #####
+-->
+   </body>
+</html>

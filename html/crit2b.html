@@ -1,0 +1,156 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN">
+<html xmlns:mwsh="http://www.mathworks.com/namespace/mcode/v1/syntaxhighlight.dtd">
+   <head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   
+      <!--
+This HTML is auto-generated from an M-file.
+To make changes, update the M-file and republish this document.
+      -->
+      <title>Criterion function</title>
+      <meta name="generator" content="MATLAB 7.6">
+      <meta name="date" content="2008-09-22">
+      <meta name="m-file" content="crit2b"><style>
+
+body {
+  background-color: white;
+  margin:10px;
+}
+
+h1 {
+  color: #990000; 
+  font-size: x-large;
+}
+
+h2 {
+  color: #990000;
+  font-size: medium;
+}
+
+/* Make the text shrink to fit narrow windows, but not stretch too far in 
+wide windows. */ 
+p,h1,h2,div.content div {
+  max-width: 600px;
+  /* Hack for IE6 */
+  width: auto !important; width: 600px;
+}
+
+pre.codeinput {
+  background: #EEEEEE;
+  padding: 10px;
+}
+@media print {
+  pre.codeinput {word-wrap:break-word; width:100%;}
+} 
+
+span.keyword {color: #0000FF}
+span.comment {color: #228B22}
+span.string {color: #A020F0}
+span.untermstring {color: #B20000}
+span.syscmd {color: #B28C00}
+
+pre.codeoutput {
+  color: #666666;
+  padding: 10px;
+}
+
+pre.error {
+  color: red;
+}
+
+p.footer {
+  text-align: right;
+  font-size: xx-small;
+  font-weight: lighter;
+  font-style: italic;
+  color: gray;
+}
+
+  </style></head>
+   <body>
+      <div class="content">
+         <h1>Criterion function</h1>
+         <introduction>
+            <p>used as a stub inside optimization/prediction procedure to freeze certain parameters from being varied before they get passed
+               to actual model computations
+            </p>
+         </introduction>
+         <h2>Contents</h2>
+         <div>
+            <ul>
+               <li><a href="#3">Freezing Parameters</a></li>
+               <li><a href="#4">Calling Main Modeling Module</a></li>
+               <li><a href="#5">Getting Results</a></li>
+            </ul>
+         </div><pre class="codeinput"><span class="keyword">function</span>[cr] = crit2b(Para,itec,ini,scale)
+</pre><h2>Freezing Parameters<a name="3"></a></h2><pre class="codeinput"><span class="comment">%here we can limit optimization space by fixing parameters of input set Para</span>
+
+Par=Para;
+
+<span class="comment">%Par = [Para(1) 0.5791 0.0536 1.0519 0.0056 0.0001 0.0346 0.0663 0.0035 0.0009];</span>
+<span class="comment">%Par(5) = max(0,Para(5));</span>
+
+Par=Para;
+<span class="comment">%Par=[Para,.27273,.090997,.91855,0.0033, 0, .012,.0566,.002,.020758];</span>
+<span class="comment">%Par=[Para .27273 .090997 .91855 .0033 0 .012 .0566 .002 .020758]; %Felkner-Townsend</span>
+</pre><pre class="codeoutput">Input argument "Para" is undefined.
+
+Error in ==&gt; crit2b at 11
+Par=Para;
+
+</pre><h2>Calling Main Modeling Module<a name="4"></a></h2><pre class="codeinput">cr=LEB_model(Par,itec,ini,scale);
+</pre><h2>Getting Results<a name="5"></a></h2><pre class="codeinput">load <span class="string">criterion.mat</span>
+<span class="comment">%if new criterion value is better, save as new best</span>
+<span class="keyword">if</span> cr&lt;=crb
+    crb=cr;
+    Para0=Par;
+    disp([<span class="string">'Current Best is: '</span>,num2str(crb)])
+    disp(<span class="string">'Achieved For: '</span>)
+    disp(Para)
+    save <span class="string">-mat</span> <span class="string">criterion.mat</span> <span class="string">crb</span> <span class="string">Para0</span>
+<span class="keyword">end</span>
+</pre><pre class="codeoutput">WDEavRCxrA000040000</pre><p class="footer"><br>
+            Published with MATLAB&reg; 7.6<br></p>
+      </div>
+      <!--
+##### SOURCE BEGIN #####
+%% Criterion function
+% used as a stub inside optimization/prediction procedure to freeze
+% certain parameters from being varied before they get passed to actual
+% model computations
+%%
+function[cr] = crit2b(Para,itec,ini,scale)
+
+%% Freezing Parameters
+%here we can limit optimization space by fixing parameters of input set Para
+
+Par=Para;
+
+%Par = [Para(1) 0.5791 0.0536 1.0519 0.0056 0.0001 0.0346 0.0663 0.0035 0.0009];
+%Par(5) = max(0,Para(5));
+
+Par=Para;
+%Par=[Para,.27273,.090997,.91855,0.0033, 0, .012,.0566,.002,.020758];
+%Par=[Para .27273 .090997 .91855 .0033 0 .012 .0566 .002 .020758]; %Felkner-Townsend
+
+%% Calling Main Modeling Module
+cr=LEB_model(Par,itec,ini,scale);
+
+%% Getting Results 
+load criterion.mat
+%if new criterion value is better, save as new best
+if cr<=crb
+    crb=cr;
+    Para0=Par;  
+    disp(['Current Best is: ',num2str(crb)])
+    disp('Achieved For: ')
+    disp(Para)
+    save -mat criterion.mat crb Para0
+end
+
+##### SOURCE END #####
+-->
+   </body>
+</html>
